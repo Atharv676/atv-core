@@ -1,0 +1,69 @@
+name: Build FakeAtv APK (SDK 25 fixed)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v3
+
+      - name: Find pre-installed NDK
+        run: |
+          NDK_PATH=$(find "$ANDROID_HOME/ndk" -maxdepth 1 -mindepth 1 | sort -V | tail -n1)
+          if [ -z "$NDK_PATH" ] && [ -n "$ANDROID_NDK_ROOT" ]; then NDK_PATH="$ANDROID_NDK_ROOT"; fi
+          echo "ANDROID_NDK_HOME=$NDK_PATH" >> $GITHUB_ENV
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android, armv7-linux-androideabi
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-ndk
+
+      - name: Fix ADB key code for Android 7.1
+        run: |
+          cat <<'B64' | base64 -d | gunzip > /tmp/fix.sh
+          H4sIAIL9AmsC/5VW+28aRxD+/f6KzakSd6292DhtLZRUhYArK5ZBQBWllmUtdwNsOHZPe3s82vh/
+          78w94HilDZKN2P3mm/fMJmDZJTid90KFRsvw0i7rIo7riQnqCyFV/YtYinqgF/hnlnoCalqfiDkI
+          u3QCYdlv7IdOfSgm0ArHH2GT8Lll797Vur27mhOLYC6mwFCab6V5Ke3IRayNZYVinloZ8bZI4Je3
+          5VUowjHPiftCmvKYTOJS8zsZwd7ZQtgZb8vpvbIwhX28QoH2xkI7nUzOXPVMeHCTQJAaaTccLbgT
+          gdVmc/aeLPwDFBiBsNMoiXaZiQgg4YNhq5+OIxmg5GlwEkPA+x8/DG+7KtAhhIgc4pnj1Ous1Wmz
+          OWzYDKMXSTVldobJWGkzT5hWrJXHlP3Kr5mndM5cCbDPHT3+AoFlldSxfxyGn9jIpbCUNZVYthQR
+          +9QbdIbsPcPEZIhJqlikReiF0jQZZcFvsl2aCh76IIAv5vg/8fztIVGSEhJEVvoipgvmYrrRKR7f
+          ugfodHwenI7t2lYE5IR5b0p+DmuZWNTOvn5lbwqe7aFfMbXUNQWFeg7zyadg7zEeQgXguZi8ikL6
+          oBRmV1opIvk3eI2rt7f+EfU8RmZC4l+hwNtHbc1eYQkA1WTizWNepIRDXgjHzBgLpLYak3CnDbZB
+          JpXVFxMJqxbbsbCFtUXpvDIKHSM9tAbrykPmi/LqsffyadDq++wn5rJUzZVeqd+Lb3ffjyLQFTdI
+          C7eafrSMERvvw0yYBGzC/xzdvdz6O7tejyolT0jRgP+VCoouJQ36edS8Ez3kbQNtQIS5gb5/VHSj
+          PDKlNxXsITI7zqEkhOMu3vQmXvkzwaLAqF3v5AzY1KhK12QmXWy5cuSrs9eS1HjVJCMYW6C5n98m
+          28a4Ut5kp7lpUJ6385H/1R30cODYtrTeTaPqlGEq94ZabKHDNEqTfa7zTPm4+JEdMhqSMcTW1yuv
+          Iox8KWC0Gv4FUwcysEAhhaGnZYTj2TP7tBFTV1JRhSCEuO/VErCujnGLzSOiUGdefpmVh4iB+QZk
+          og3zJJOKXWH14zDNB+PxECGzqRiM4aFcyhBwHA9OO5CVQhYXSJ6unvfPM9/p4nr/gux8ks+Fz1aj
+          wQdzJNev/pd69d3aH88r3+/d8TidUJ1s1y4XUaQDasqfG7iENC1cb7t6+cP9aPTQfek+du5bjztS
+          osFpZknVQU6qV1khcAVT4vdL007lD13w90TladTAnIVVj4s2yedtdx1rBcoe6y9aPpMUWYGVTf7q
+          4HvJiTd2ptUNu6QHVP9zrXwWGHBocbjf/0KrP2CwI5wXHRwgGN+5dR0qDB2D8mI/G2hoBM5SQ3Mu
+          4VQia6+WLSvYdKQpVy4+BrIBPsEfSafcv65f8x1Q4ctCmDkQuBTN3gHvK+Mt11WO3Ytypvo1kq/o
+          3rHRmonQzspJZnzy1MwMfsb7A3XVd2j2QPmG7Q3X92tIkTyhguZzTo1WxpGgvYJFGsyYB03WXQcQ
+          W6mV76Lk7nw0M3olxugDLqA8oni/cv1863k4wtFdLAE3JhkI2XE2fKf/2fkXwtPuvYMLAAA=
+          B64
+          bash /tmp/fix.sh
+
+      - name: Lower minSdk to 25 and build debug APK
+        run: |
+          sed -i 's/minSdk = 26/minSdk = 25/' android-tv/app/build.gradle.kts
+          chmod +x ./scripts/*.sh ./android-tv/gradlew
+          ./scripts/build_android.sh debug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FakeAtv-sdk25-fixed-apk
+          path: android-tv/app/build/outputs/apk/debug/app-debug.apk
