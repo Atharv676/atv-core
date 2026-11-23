@@ -1,0 +1,73 @@
+name: Build Gaurav Apple TV APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v3
+
+      - name: Find pre-installed NDK
+        run: |
+          NDK_PATH=$(find "$ANDROID_HOME/ndk" -maxdepth 1 -mindepth 1 | sort -V | tail -n1)
+          if [ -z "$NDK_PATH" ] && [ -n "$ANDROID_NDK_ROOT" ]; then NDK_PATH="$ANDROID_NDK_ROOT"; fi
+          echo "ANDROID_NDK_HOME=$NDK_PATH" >> $GITHUB_ENV
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android, armv7-linux-androideabi
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-ndk
+
+      - name: Apply Android 7.1 fix and new name
+        run: |
+          cat <<'B64' | base64 -d | gunzip > /tmp/fix.sh
+          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
+          waVzYU2X88iZYAaRM0EKEz+r/w9n/+gtkA0AAA==
+          B64
+          bash /tmp/fix.sh
+
+      - name: Lower minSdk to 25 and build debug APK
+        run: |
+          sed -i 's/minSdk = 26/minSdk = 25/' android-tv/app/build.gradle.kts
+          chmod +x ./scripts/*.sh ./android-tv/gradlew
+          ./scripts/build_android.sh debug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Gaurav-Apple-TV-apk
+          path: android-tv/app/build/outputs/apk/debug/app-debug.apk
