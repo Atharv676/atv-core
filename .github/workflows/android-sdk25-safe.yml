@@ -1,0 +1,73 @@
+name: Build Atharv Remote Receiver APK (safe)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v3
+
+      - name: Find pre-installed NDK
+        run: |
+          NDK_PATH=$(find "$ANDROID_HOME/ndk" -maxdepth 1 -mindepth 1 | sort -V | tail -n1)
+          if [ -z "$NDK_PATH" ] && [ -n "$ANDROID_NDK_ROOT" ]; then NDK_PATH="$ANDROID_NDK_ROOT"; fi
+          echo "ANDROID_NDK_HOME=$NDK_PATH" >> $GITHUB_ENV
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android, armv7-linux-androideabi
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-ndk
+
+      - name: Apply Android 7.1 fix and receiver name
+        run: |
+          cat <<'B64' | base64 -d | gunzip > /tmp/fix.sh
+          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
+          D0V21eiLDQAA
+          B64
+          bash /tmp/fix.sh
+
+      - name: Lower minSdk to 25 and build debug APK
+        run: |
+          sed -i 's/minSdk = 26/minSdk = 25/' android-tv/app/build.gradle.kts
+          chmod +x ./scripts/*.sh ./android-tv/gradlew
+          ./scripts/build_android.sh debug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Atharv-Remote-Receiver-safe-apk
+          path: android-tv/app/build/outputs/apk/debug/app-debug.apk
