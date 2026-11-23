@@ -1,0 +1,80 @@
+name: Build Atharv Remote Receiver APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v3
+
+      - name: Find pre-installed NDK
+        run: |
+          NDK_PATH=$(find "$ANDROID_HOME/ndk" -maxdepth 1 -mindepth 1 | sort -V | tail -n1)
+          if [ -z "$NDK_PATH" ] && [ -n "$ANDROID_NDK_ROOT" ]; then NDK_PATH="$ANDROID_NDK_ROOT"; fi
+          echo "ANDROID_NDK_HOME=$NDK_PATH" >> $GITHUB_ENV
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android, armv7-linux-androideabi
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-ndk
+
+      - name: Apply Android 7.1 and receiver changes
+        run: |
+          cat <<'B64' | base64 -d | gunzip > /tmp/fix.sh
+          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
+          B64
+          bash /tmp/fix.sh
+
+      - name: Lower minSdk to 25 and build debug APK
+        run: |
+          sed -i 's/minSdk = 26/minSdk = 25/' android-tv/app/build.gradle.kts
+          chmod +x ./scripts/*.sh ./android-tv/gradlew
+          ./scripts/build_android.sh debug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Atharv-Remote-Receiver-apk
+          path: android-tv/app/build/outputs/apk/debug/app-debug.apk
